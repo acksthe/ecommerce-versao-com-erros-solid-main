@@ -10,18 +10,29 @@ export class OrderService {
     private notificationService: NotificationService
   ) {}
 
-  async execute(data: any) {
+  async execute(data: any): Promise<void> {
     let total = 0;
-    let frete = 0;
+    let freight = 0;
 
     for (const item of data.items) {
+      // o service NÃO interpreta o tipo do produto
       const product = ProductFactory.create(item.product);
+
       total += product.getPrice() * item.quantity;
-      frete += product.calculateFreight();
+      freight += product.calculateFreight();
     }
 
-    await this.paymentMethod.process(total + frete);
-    await this.orderRepository.save({...data, total, frete});
+    const amountToPay = total + freight;
+
+    await this.paymentMethod.process(amountToPay);
+
+    await this.orderRepository.save({
+      customer: data.customer,
+      total,
+      freight,
+      paymentMethod: data.paymentMethod,
+    });
+
     await this.notificationService.sendOrderConfirmation(data.customer);
   }
 }
